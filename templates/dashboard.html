@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Quiet Ledger{% endblock %}
+{% block content %}
+
+  <p class="label">{{ today_str }}</p>
+  <h1 class="headline">Hello, Ahmad.</h1>
+
+  <div class="stat-frame">
+    <div class="stat-col">
+      <p class="label">Total value</p>
+      <span class="metric metric-lg">{{ total_value_cents | money }}</span>
+      <p class="delta label">Across all holdings</p>
+    </div>
+    <div class="stat-col">
+      <p class="label">Total return</p>
+      {% if total_return_cents >= 0 %}
+        <span class="metric metric-lg return-up">{{ total_return_cents | money }}</span>
+        <p class="delta return-up">{{ "%+.2f"|format(total_return_pct) }}%</p>
+      {% else %}
+        <span class="metric metric-lg return-down">{{ total_return_cents | money }}</span>
+        <p class="delta return-down">{{ "%+.2f"|format(total_return_pct) }}%</p>
+      {% endif %}
+    </div>
+    <div class="stat-col">
+      {# No live/intraday price feed, so "today" is a static placeholder. #}
+      <p class="label">Today</p>
+      <span class="metric metric-lg">+$0.00</span>
+      <p class="delta label">No live feed yet</p>
+    </div>
+    <div class="stat-col">
+      <p class="label">Cost basis</p>
+      <span class="metric metric-lg">{{ cost_basis_cents | money }}</span>
+      <p class="delta label">Your invested capital</p>
+    </div>
+  </div>
+
+  <div class="dashboard-grid section">
+    <div class="card">
+      <div class="panel-header">
+        <div>
+          <p class="panel-eyebrow">Over time</p>
+          <p class="title" style="margin: 0;">Net worth</p>
+        </div>
+        <div class="range-buttons">
+          {% if chart_range == '3m' %}
+            <a class="range-btn active" href="{{ url_for('dashboard') }}?range=3m">3M</a>
+          {% else %}
+            <a class="range-btn" href="{{ url_for('dashboard') }}?range=3m">3M</a>
+          {% endif %}
+          {% if chart_range == '6m' %}
+            <a class="range-btn active" href="{{ url_for('dashboard') }}?range=6m">6M</a>
+          {% else %}
+            <a class="range-btn" href="{{ url_for('dashboard') }}?range=6m">6M</a>
+          {% endif %}
+          {% if chart_range == '1y' %}
+            <a class="range-btn active" href="{{ url_for('dashboard') }}?range=1y">1Y</a>
+          {% else %}
+            <a class="range-btn" href="{{ url_for('dashboard') }}?range=1y">1Y</a>
+          {% endif %}
+        </div>
+      </div>
+      {# This chart is server-rendered by Matplotlib (see charts.py) and
+         served as a PNG -- the range buttons above just reload the page
+         with a different ?range=, no JavaScript needed. #}
+      <img class="chart-img" src="{{ url_for('net_worth_chart') }}?range={{ chart_range }}" alt="Net worth over time" />
+      <p class="label" style="margin-top: 12px;">
+        Current value {{ total_value_cents | money }} · {{ "%+.2f"|format(total_return_pct) }}% all time
+      </p>
+    </div>
+
+    <div class="card">
+      <p class="panel-eyebrow">Where it lives</p>
+      <p class="title" style="margin: 0 0 8px;">Allocation</p>
+      {% if holdings %}
+        {# Rendered by Matplotlib (see charts.py) and served as a PNG. The
+           SVG on top is invisible -- one arc per holding, sized with
+           stroke-dasharray/stroke-dashoffset to sit exactly over that
+           holding's wedge (values computed in quiet_app.py). Each arc has
+           a title element, so hovering shows the browser's own tooltip --
+           no JavaScript needed. #}
+        <div class="allocation-wrap">
+          <img class="allocation-chart" src="{{ url_for('allocation_chart') }}" alt="Allocation by holding" />
+          <svg class="allocation-hover" viewBox="0 0 36 36">
+            {% for h in holdings %}
+              <circle
+                class="hover-seg"
+                cx="18" cy="18" r="9"
+                stroke-width="5.2"
+                stroke-dasharray="{{ h.dash_length }} {{ h.dash_gap }}"
+                stroke-dashoffset="{{ h.dash_offset }}"
+              ><title>{{ h.symbol }}: {{ "%.1f"|format(h.allocation_pct) }}%</title></circle>
+            {% endfor %}
+          </svg>
+        </div>
+        <div class="allocation-list">
+          {% for h in holdings %}
+            <div class="allocation-row">
+              <span class="allocation-dot" style="background: {{ h.color }};"></span>
+              <span class="allocation-name">{{ h.symbol }}</span>
+              <span class="allocation-pct">{{ "%.1f"|format(h.allocation_pct) }}%</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty">No holdings yet — add one on the Holdings page.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card section">
+    <div class="panel-header">
+      <div>
+        <p class="panel-eyebrow">At a glance</p>
+        <p class="title" style="margin: 0;">Holdings</p>
+      </div>
+      <a class="panel-link" href="{{ url_for('holdings') }}">View all &#8599;</a>
+    </div>
+    {% if holdings %}
+      <table>
+        <thead>
+          <tr>
+            <th>Holding</th>
+            <th class="num">Quantity</th>
+            <th class="num">Price</th>
+            <th class="num">Market value</th>
+            <th class="num">Return</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in holdings %}
+            <tr>
+              <td>
+                <div class="holding-cell">
+                  <span class="ticker-badge">{{ h.symbol[:2] }}</span>
+                  {{ h.symbol }}
+                </div>
+              </td>
+              <td class="num">{{ h.quantity | qty }}</td>
+              <td class="num">{{ h.current_price | money }}</td>
+              <td class="num">{{ h.value_cents | money }}</td>
+              {% if h.return_cents >= 0 %}
+                <td class="num return-up">
+                  {{ h.return_cents | money }} ({{ "%+.2f"|format(h.return_pct) }}%)
+                </td>
+              {% else %}
+                <td class="num return-down">
+                  {{ h.return_cents | money }} ({{ "%+.2f"|format(h.return_pct) }}%)
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">No holdings yet — add one on the Holdings page.</p>
+    {% endif %}
+  </div>
+
+{% endblock %}

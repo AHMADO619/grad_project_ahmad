@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Transactions · Quiet Ledger{% endblock %}
+{% block content %}
+  <h1 class="headline">Transactions</h1>
+
+  <div class="card section">
+    <p class="title">Add a transaction</p>
+    <form class="form-row" method="post" action="{{ url_for('add_transaction_route') }}">
+      <div class="field">
+        <label for="symbol">Symbol</label>
+        <input type="text" id="symbol" name="symbol" required>
+      </div>
+      <div class="field">
+        <label for="quantity">Quantity</label>
+        <input type="number" step="any" id="quantity" name="quantity" required>
+      </div>
+      <div class="field">
+        <label for="purchase_price">Purchase price ($)</label>
+        <input type="number" step="0.01" id="purchase_price" name="purchase_price" required>
+      </div>
+      <div class="field">
+        <label for="sale_price">Sale price ($, optional)</label>
+        <input type="number" step="0.01" id="sale_price" name="sale_price">
+      </div>
+      <div class="field">
+        <label for="sale_date">Sale date (optional)</label>
+        <input type="date" id="sale_date" name="sale_date">
+      </div>
+      <button class="btn btn-primary" type="submit">Add</button>
+    </form>
+  </div>
+
+  {% if transactions %}
+    <table>
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th class="num">Quantity</th>
+          <th class="num">Purchase price</th>
+          <th class="num">Sale price</th>
+          <th>Sale date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+          <tr>
+            <td>{{ t.symbol }}</td>
+            <td class="num">{{ t.quantity | qty }}</td>
+            <td class="num">{{ t.purchase_price | money }}</td>
+            {% if t.sale_price %}
+              <td class="num">{{ t.sale_price | money }}</td>
+            {% else %}
+              <td class="num">—</td>
+            {% endif %}
+            {% if t.sale_date %}
+              <td>{{ t.sale_date }}</td>
+            {% else %}
+              <td>—</td>
+            {% endif %}
+            <td>
+              <form method="post" action="{{ url_for('delete_transaction_route', transaction_id=t.id) }}">
+                <button class="btn-danger" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No transactions yet — add one above.</p>
+  {% endif %}
+{% endblock %}

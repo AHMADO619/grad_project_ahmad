@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}News · Quiet Ledger{% endblock %}
+{% block content %}
+
+  <h1 class="headline">News</h1>
+  <p class="label" style="margin-bottom: 24px;">Recent headlines for each of your holdings</p>
+
+  {% for holding in news_view %}
+    <div class="card section">
+      <p class="panel-eyebrow">{{ holding.symbol }}</p>
+      {% if holding.articles %}
+        {% for article in holding.articles %}
+          <div class="news-item">
+            <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.headline }}</a>
+            <p class="label">{{ article.source }}</p>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty">No recent news found for {{ holding.symbol }}.</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+{% endblock %}
